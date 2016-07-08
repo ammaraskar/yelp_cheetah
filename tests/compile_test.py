@@ -29,16 +29,16 @@ def test_compile_source_requires_text():
 def test_compile_source_returns_text():
     ret = compile_source('Hello, world!')
     assert type(ret) is six.text_type
-    assert "write('''Hello, world!''')" in ret
+    assert "+= '''Hello, world!'''" in ret
 
 
 def test_compile_source_with_encoding_returns_text():
     ret = compile_source('Hello, world! ☃')
     assert type(ret) is six.text_type
     if six.PY2:
-        assert "write('''Hello, world! \\u2603''')" in ret
+        assert "+= '''Hello, world! \\u2603'''" in ret
     else:
-        assert "write('''Hello, world! ☃''')" in ret
+        assert "+= '''Hello, world! ☃'''" in ret
 
 
 def test_compile_source_follows_settings():
@@ -93,7 +93,7 @@ def test_compile_file_destination(tmpfile, tmpdir):
     assert os.path.exists(output_file)
     python_file_contents = io.open(output_file).read()
     assert 'class YelpCheetahTemplate(' in python_file_contents
-    assert "write('''Hello, world!''')" in python_file_contents
+    assert "+= '''Hello, world!'''" in python_file_contents
 
 
 def test_compile_file_as_script(tmpfile):

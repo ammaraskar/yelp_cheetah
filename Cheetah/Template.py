@@ -32,6 +32,7 @@ class Template(object):
       Instance attributes look like this:
           self._CHEETAH__searchList (_CHEETAH__xxx with 2 underscores)
     """
+    avg_length = None
 
     def __init__(
             self,

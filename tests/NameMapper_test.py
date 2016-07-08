@@ -5,10 +5,12 @@ import pytest
 
 from Cheetah.compile import compile_to_class
 from Cheetah.NameMapper import NotFound
+from Cheetah.NameMapper import py_StringIO
 from Cheetah.NameMapper import py_value_from_frame_or_namespace
 from Cheetah.NameMapper import py_value_from_frame_or_search_list
 from Cheetah.NameMapper import py_value_from_namespace
 from Cheetah.NameMapper import py_value_from_search_list
+from Cheetah.NameMapper import StringIO as _StringIO
 from Cheetah.NameMapper import value_from_frame_or_namespace
 from Cheetah.NameMapper import value_from_frame_or_search_list
 from Cheetah.NameMapper import value_from_namespace
@@ -28,6 +30,10 @@ vfsl_tests = pytest.mark.parametrize(
 vffsl_tests = pytest.mark.parametrize(
     'vffsl',
     (py_value_from_frame_or_search_list, value_from_frame_or_search_list),
+)
+stringio_tests = pytest.mark.parametrize(
+    'StringIO',
+    (py_StringIO, _StringIO)
 )
 
 
@@ -144,6 +150,26 @@ def test_VFFNS_builtins_next(vffns):
 def test_VFFNS_and_finally_searchlist(vffns):
     ns_var = object()
     assert vffns('bar', locals(), globals(), {'bar': ns_var}) is ns_var
+
+
+@stringio_tests
+def test_stringio_inplace_add(StringIO):
+    s = StringIO()
+
+    s += "a" * 150
+    s += "b" * 150
+
+    assert s.getvalue() == ("a" * 150) + ("b" * 150)
+
+
+@stringio_tests
+def test_stringio_write(StringIO):
+    s = StringIO()
+
+    s.write("a" * 150)
+    s.write("b" * 150)
+
+    assert s.getvalue() == ("a" * 150) + ("b" * 150)
 
 
 def test_map_builtins_int():

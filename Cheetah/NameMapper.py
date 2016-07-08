@@ -2,6 +2,7 @@
 
 NameMapper is what looks up variables in cheetah's "searchList".
 """
+import io
 import sys
 
 import _cheetah
@@ -50,13 +51,24 @@ def py_value_from_frame_or_search_list(key, locals_, globals_, self, ns):
     return value
 
 
+class py_StringIO(io.StringIO):
+    def __iadd__(self, other):
+        self.write(other)
+        return self
+
+
 if '__pypy__' in sys.builtin_module_names:  # pragma: no cover
     value_from_namespace = py_value_from_namespace
     value_from_frame_or_namespace = py_value_from_frame_or_namespace
     value_from_search_list = py_value_from_search_list
     value_from_frame_or_search_list = py_value_from_frame_or_search_list
+    StringIO = py_StringIO
 else:   # pragma: no cover
     value_from_namespace = _cheetah.value_from_namespace
     value_from_frame_or_namespace = _cheetah.value_from_frame_or_namespace
     value_from_search_list = _cheetah.value_from_search_list
     value_from_frame_or_search_list = _cheetah.value_from_frame_or_search_list
+    try:
+        StringIO = _cheetah.StringIO
+    except AttributeError:
+        StringIO = py_StringIO

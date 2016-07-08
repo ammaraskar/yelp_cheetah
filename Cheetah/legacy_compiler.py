@@ -303,7 +303,7 @@ class MethodCompiler(object):
         self._methodBodyChunks[-1] += appendage
 
     def addWriteChunk(self, chunk):
-        self.addChunk('self.transaction.write({})'.format(chunk))
+        self.addChunk('self.transaction += {}'.format(chunk))
 
     def addFilteredChunk(self, chunk, rawExpr=None, lineCol=None):
         if rawExpr and rawExpr.find('\n') == -1 and rawExpr.find('\r') == -1:
@@ -312,7 +312,7 @@ class MethodCompiler(object):
         else:
             self.addChunk('_v = %s' % chunk)
 
-        self.addChunk('if _v is not NO_CONTENT: self.transaction.write(self._CHEETAH__currentFilter(_v))')
+        self.addChunk('if _v is not NO_CONTENT: self.transaction += self._CHEETAH__currentFilter(_v)')
 
     def addStrConst(self, strConst):
         self._pendingStrConstChunks.append(strConst)
@@ -445,7 +445,14 @@ class MethodCompiler(object):
 
         self.addChunk('if not self.transaction:')
         self.indent()
-        self.addChunk('self.transaction = io.StringIO()')
+        self.addChunk('if self.avg_length and CheetahStringIO.__name__.startswith("_cheetah"):')
+        self.indent()
+        self.addChunk('self.transaction = CheetahStringIO(self.avg_length)')
+        self.dedent()
+        self.addChunk('else:')
+        self.indent()
+        self.addChunk('self.transaction = CheetahStringIO()')
+        self.dedent()
         self.addChunk('_dummyTrans = True')
         self.dedent()
         self.addChunk('else:')
@@ -466,6 +473,11 @@ class MethodCompiler(object):
             self.addChunk('if _dummyTrans:')
             self.indent()
             self.addChunk('result = self.transaction.getvalue()')
+            self.addChunk('if not self.avg_length:')
+            self.indent()
+            self.addChunk('self.avg_length = len(result)')
+            self.dedent()
+            self.addChunk('self.avg_length = (self.avg_length + len(result)) // 2')
             self.addChunk('self.transaction = None')
             self.addChunk('return result')
             self.dedent()
@@ -491,7 +503,7 @@ class ClassCompiler(object):
         self._mainMethodName = main_method_name
         self._decoratorsForNextMethod = []
         self._activeMethodsList = []        # stack while parsing/generating
-        self._attrs = []
+        self._attrs = ["avg_length = None"]
         self._finishedMethodsList = []      # store by order
 
         self._main_method = self._spawnMethodCompiler(
@@ -583,10 +595,7 @@ class ClassCompiler(object):
         )
 
     def attributes(self):
-        if self._attrs:
-            return '\n'.join(INDENT + attr for attr in self._attrs) + '\n'
-        else:
-            return ''
+        return '\n'.join(INDENT + attr for attr in self._attrs) + '\n'
 
 
 class LegacyCompiler(SettingsManager):
@@ -610,7 +619,7 @@ class LegacyCompiler(SettingsManager):
             CLASS_NAME, BASE_CLASS_NAME,
         )
         self._importStatements = [
-            'import io',
+            'from Cheetah.NameMapper import StringIO as CheetahStringIO',
             'from Cheetah.NameMapper import value_from_frame_or_namespace as VFFNS',
             'from Cheetah.NameMapper import value_from_frame_or_search_list as VFFSL',
             'from Cheetah.Template import NO_CONTENT',

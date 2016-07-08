@@ -1,5 +1,5 @@
 from __future__ import unicode_literals
 
-import io
+from Cheetah.NameMapper import StringIO
 
-DummyTransaction = io.StringIO  # For backwards compatibility
+DummyTransaction = StringIO  # For backwards compatibility
