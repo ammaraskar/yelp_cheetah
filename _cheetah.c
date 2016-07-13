@@ -152,12 +152,14 @@ typedef struct {
     Py_ssize_t string_length;
 
     Py_ssize_t index;
-    int memory_delegated;
+    PyObject* delegatee;
 } CheetahStringIOObject;
 
 static void
 CheetahStringIO_dealloc(CheetahStringIOObject* self) {
-    if (!self->memory_delegated) {
+    if (self->delegatee) {
+        Py_DECREF(self->delegatee);
+    } else {
         PyObject_DEL(self->buf);
     }
     Py_TYPE(self)->tp_free((PyObject*) self);
@@ -177,7 +179,7 @@ CheetahStringIO_init(CheetahStringIOObject* self, PyObject* args, PyObject* kwds
     self->buf_size = buf_size;
     self->index = 0;
     self->string_length = 0;
-    self->memory_delegated = 0;
+    self->delegatee = NULL;
 
     return 0;
 }
@@ -188,7 +190,7 @@ CheetahStringIO_InPlaceAdd(PyObject* _self, PyObject* other) {
     Py_ssize_t str_len;
     char* str;
 
-    if (self->memory_delegated) {
+    if (self->delegatee) {
         PyErr_SetString(PyExc_RuntimeError, "You cannot modify a CheetahStringIO after getvalue() has been called");
         return NULL;
     }
@@ -231,11 +233,9 @@ CheetahStringIO_Write(PyObject* self, PyObject *arg) {
 static PyObject*
 CheetahStringIO_GetValue(CheetahStringIOObject* self) {
 #if PY_MAJOR_VERSION == 2 && PY_MINOR_VERSION >= 6
-    if (self->memory_delegated) {
-        // We've delegated our internal buffer to the UnicodeObject, returning another UnicodeObject from the
-        // same buffer would be extremely dangerous and potentially segfault the interpreter
-        PyErr_SetString(PyExc_RuntimeError, "You cannot call getvalue() twice on a _cheetah.StringIO object");
-        return NULL;
+    if (self->delegatee) {
+        Py_INCREF(self->delegatee);
+        return self->delegatee;
     }
 
     PyUnicodeObject* unicode = PyObject_New(PyUnicodeObject, &PyUnicode_Type);
@@ -245,7 +245,8 @@ CheetahStringIO_GetValue(CheetahStringIOObject* self) {
     unicode->str = self->buf;
     unicode->defenc = NULL;
 
-    self->memory_delegated = 1;
+    self->delegatee = (PyObject*) unicode;
+    Py_INCREF(self->delegatee);
 
     return (PyObject*) unicode;
 #else
